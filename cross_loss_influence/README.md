@@ -1,5 +1,5 @@
 # Influence Functions
-This repo houses the code to identify influential examples in word embedding models.
+This repo houses the code to identify influential examples in embedding models.
 
 ### Setup:
 This a pip install of itself, as well as datasets and external libraries. You probably also want to edit your config.json:
