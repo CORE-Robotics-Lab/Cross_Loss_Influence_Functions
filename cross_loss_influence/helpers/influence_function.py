@@ -54,7 +54,7 @@ def calc_influence_single(model, train_dataset, z_test, t_test, recursion_depth,
         good_enough = False  # Is a word of interest in this sample?
         words, contexts = vectorized_influence_data_to_tensors(batch_data)
         for v_index in test_indices:
-            if v_index in words:
+            if v_index in words.cpu():
                 good_enough = True
         if not good_enough:
             continue
@@ -164,8 +164,8 @@ def s_test(z_test, t_test, model, train_loader, damp=0.01, scale=25.0,
         good_enough = False  # Is a word of interest in this sample?
         words, contexts = vectorized_influence_data_to_tensors(batch_data)
         for v_index in test_indices:
-            if v_index in words:
-                good_enough=True
+            if v_index in words.cpu():
+                good_enough = True
         if not good_enough:
             continue
         words = torch.autograd.Variable(words).to(device=DEVICE)
@@ -403,12 +403,16 @@ def explain_bias(test='math',
              'cancer', 'evil', 'kill', 'rotten', 'vomit']
         X = ['josh', 'alan', 'ryan', 'andrew', 'jack', 'greg', 'amanda', 'katie', 'nancy', 'ellen']
         Y = ['theo', 'jerome', 'leroy', 'lamar', 'lionel', 'malik', 'tyrone', 'ebony', 'jasmine', 'tia', ]
-    x_embed = [torch.tensor([all_keys.index(x)], dtype=torch.long).to(device=DEVICE) for x in X]
-    y_embed = [torch.tensor([all_keys.index(x)], dtype=torch.long).to(device=DEVICE) for x in Y]
-    a_embed = [torch.tensor([all_keys.index(x)], dtype=torch.long).to(device=DEVICE) for x in A]
-    b_embed = [torch.tensor([all_keys.index(x)], dtype=torch.long).to(device=DEVICE) for x in B]
+    x_embed = [torch.tensor([all_keys.index(x)], dtype=torch.long).to(device='cpu') for x in X]
+    y_embed = [torch.tensor([all_keys.index(x)], dtype=torch.long).to(device='cpu') for x in Y]
+    a_embed = [torch.tensor([all_keys.index(x)], dtype=torch.long).to(device='cpu') for x in A]
+    b_embed = [torch.tensor([all_keys.index(x)], dtype=torch.long).to(device='cpu') for x in B]
     test_indices = np.unique(x_embed+y_embed+a_embed+b_embed).tolist()
     model = load_skipgram(model_name, device)
+    x_embed = [x.to(device=DEVICE) for x in x_embed]
+    y_embed = [x.to(device=DEVICE) for x in y_embed]
+    a_embed = [x.to(device=DEVICE) for x in a_embed]
+    b_embed = [x.to(device=DEVICE) for x in b_embed]
     z_test = [x_embed, y_embed]
     t_test = [a_embed, b_embed]
 
@@ -475,9 +479,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-b", "--base", help="biased or neutral", type=str, default='biased')
     parser.add_argument("-t", "--test", help="test? ['career', 'science', 'math', 'race']", type=str, default='career')
+    parser.add_argument("-m", "--model_name", help="Model name to investigate", type=str, required=True)
+    parser.add_argument("-w", "--word", help="Word for the scifi tests", type=str)
     args = parser.parse_args()
     original = args.base
     test_name = args.test
+    model_name = args.model_name
+    word = args.word
     # start_time = time.time()
 
     w_s = 3
@@ -487,8 +495,9 @@ if __name__ == "__main__":
     if test_name == 'scifi':
         rec = 1
         r_depth = 5000
-        i_out, harm_out, help_out, dset, keyset = explain_embed_pos(word='spock',
-                                                                    model_name='DENSE_scifi_window-3_negatives-5',
+        assert len(word) > 0, "-w or --word must be passed in"
+        i_out, harm_out, help_out, dset, keyset = explain_embed_pos(word=word,
+                                                                    model_name=model_name,
                                                                     data_fn='all_scripts_numericalized_dataset.pkl',
                                                                     vocab_fn='all_scripts_stoi.pkl',
                                                                     window_size=w_s,
@@ -497,10 +506,11 @@ if __name__ == "__main__":
         write_out_results(i_out, harm_out, help_out, dset, keyset,
                           file_prefix=f'{test_name}_{original}_influence_scifi')
     else:
-        model_name = f'DENSE_{original}_window-10_negatives-10_60_checkpoint.pth.tar'
-        prior_work_fn = os.path.join(DATA_DIR, f'bolukbasi_original_{model_name}_debiased.txt')
-        if test_name == 'race':
-            prior_work_fn = os.path.join(DATA_DIR, f'bolukbasi_original_{model_name}_debiased-race.txt')
+        prior_work_fn = None
+        if 'bolukbasi' in model_name:
+            prior_work_fn = model_name
+
+        # prior_work_fn = os.path.join(DATA_DIR, f'bolukbasi_original_{model_name}_debiased.txt')
 
         print(f"Beginning influence estimation on {original} embeddings with {test_name} WEAT")
         i_out, harm_out, help_out, dset, keyset = explain_bias(test=test_name,
@@ -511,5 +521,6 @@ if __name__ == "__main__":
                                                                recursion_depth=r_depth,
                                                                r=rec,
                                                                other_embeds=prior_work_fn)
+
         write_out_results(i_out, harm_out, help_out, dset, keyset,
-                          file_prefix=f'{test_name}_{original}_influence_bolukbasi')
+                          file_prefix=f'{test_name}_{original}_{model_name}_influence_')

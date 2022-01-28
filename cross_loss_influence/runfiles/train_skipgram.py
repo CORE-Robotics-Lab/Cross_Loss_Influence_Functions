@@ -71,34 +71,6 @@ def training_log(start_time, index, batch_size, dataset_size, loss_val):
           f"Elapsed Time: {elapsed_time} || Est. Time Remaining {est_remaining}")
 
 
-def mp_train_skipgram_model(dict_in):
-    """
-    Interprets dictionary for multiprocessing
-    :param dict_in: dict with keywords matching train_skipgram_model
-    :return: nothing, just runs train_skipgram_model
-    """
-    window_size = dict_in['window_size']
-    number_negatives = dict_in['number_negatives']
-    batch_size = 1000
-    number_epochs = 200
-    num_workers = 10
-    cuda = True
-    if 'batch_size' in dict_in.keys():
-        batch_size = dict_in['batch_size']
-    if 'number_epochs' in dict_in.keys():
-        number_epochs = dict_in['number_epochs']
-    if 'num_workers' in dict_in.keys():
-        num_workers = dict_in['num_workers']
-    if 'cuda' in dict_in.keys():
-        cuda = dict_in['cuda']
-    train_skipgram_model(window_size=window_size,
-                         number_negatives=number_negatives,
-                         batch_size=batch_size,
-                         number_epochs=number_epochs,
-                         num_workers=num_workers,
-                         cuda=cuda)
-
-
 def train_skipgram_model(window_size,
                          number_negatives,
                          batch_size=1000,
@@ -136,9 +108,6 @@ def train_skipgram_model(window_size,
                                    filename=f'{model_data_name}_data_numericalized_dataset.pkl',
                                    window_size=window_size,
                                    num_negs=number_negatives)
-    # med_dataset = MedText(data_dir=DATA_DIR,
-    #                       window_size=4,
-    #                       num_negs=15)
 
     print(f"Dataset created in {time.time()-start_time} seconds")
 
@@ -146,7 +115,8 @@ def train_skipgram_model(window_size,
     dataset_size = len(med_dataset)
     print(f"Logging every {log_every}")
 
-    test_dataloader = DataLoader(dataset=med_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    test_dataloader = DataLoader(dataset=med_dataset, batch_size=batch_size, shuffle=True,
+                                 num_workers=num_workers)
     print("Data loader created")
 
     model = SkipGramModel(vocab_size=25355, embedding_dim=100, sparse=sparse).to(device=device)  # 15282 scripts size
@@ -154,20 +124,20 @@ def train_skipgram_model(window_size,
     optim_adam = torch.optim.Adam(lr=learning_rate, params=model.parameters())
     lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optim_adam, .9, last_epoch=-1)
     base_epoch = 0
-    if not os.path.exists(os.path.join(MODEL_SAVE_DIR, PROJECT_NAME, 'checkpoints', f"{model_name}_init_checkpoint.pth.tar")):
+    if os.path.exists(os.path.join(MODEL_SAVE_DIR, PROJECT_NAME, 'checkpoints', f'{model_name}_last_checkpoint.pth.tar')):
+        checkpoint = torch.load(os.path.join(MODEL_SAVE_DIR, PROJECT_NAME, 'checkpoints', f'{model_name}_last_checkpoint.pth.tar'))
+        model.load_state_dict(checkpoint['model_data'])
+        optim_adam.load_state_dict(checkpoint['opt_data'])
+        lr_scheduler.load_state_dict(checkpoint['lr_scheduler_data'])
+        base_epoch = checkpoint['epoch']
+    else:
         torch.save({
             'model_data': model.state_dict(),
             'epoch': 0,
             'opt_data': optim_adam.state_dict(),
             'lr_scheduler_data': lr_scheduler.state_dict()
         }, os.path.join(MODEL_SAVE_DIR, PROJECT_NAME, 'checkpoints', f"{model_name}_init_checkpoint.pth.tar"))
-    else:
-        # Load saved model and optim stuff. This is hard coded for now...
-        checkpoint = torch.load(os.path.join(MODEL_SAVE_DIR, PROJECT_NAME, 'checkpoints', 'DENSE_biased_window-10_negatives-10_last_checkpoint.pth.tar'))
-        model.load_state_dict(checkpoint['model_data'])
-        optim_adam.load_state_dict(checkpoint['opt_data'])
-        lr_scheduler.load_state_dict(checkpoint['lr_scheduler_data'])
-        base_epoch = checkpoint['epoch']
+
 
     for epoch in range(1, number_epochs+1-base_epoch):
         epoch += base_epoch
@@ -198,11 +168,11 @@ def train_skipgram_model(window_size,
                 'opt_data': optim_adam.state_dict(),
                 'lr_scheduler_data': lr_scheduler.state_dict()
             }, os.path.join(MODEL_SAVE_DIR, PROJECT_NAME, 'checkpoints', f"{model_name}_last_checkpoint.pth.tar"))
-        lr_scheduler.step(epoch=epoch-1)
+        lr_scheduler.step()
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Medical Knowledge Discovery (because mp failed)')
+    parser = argparse.ArgumentParser(description='')
     parser.add_argument('-c', '--context-window', type=int, default=8, help='context window size (default: 4)')
     parser.add_argument('-n', '--number-negatives', type=int, default=20, help='number of negative samples (default: 15')
     parser.add_argument('-b', '--batch-size', type=int, default=1000, help='batch size (default: 1000)')

@@ -40,15 +40,15 @@ There are 2 command line args for this:
 * `-p` or `--data_path`: Where would you like results/data to be stored?
 * '-r' or `--re_use`: Should we re-use an already-generated MoG result? (only add this if you've already run the script at least once)
 
-To manually step through the entire script, follow the steps in `MOG_README.md`
+To manually step through the entire script, follow the steps in `MOG_README.md`.
 
 ### Data:
 #### WNC:
-For the [WNC data](https://arxiv.org/abs/1911.09709v1), Our dataset is available here: https://drive.google.com/file/d/1KQLxwU5Yh-Ora7ri_G09iYFIplyrsq-G/view?usp=sharing . Just put it in this directory.
+For the [WNC data](https://arxiv.org/abs/1911.09709v1), I've made our dataset available here: https://drive.google.com/file/d/1KQLxwU5Yh-Ora7ri_G09iYFIplyrsq-G/view?usp=sharing. Download and unzip this file into the same directory that you're using for your `data_directory` above.
 
-I have used their set of tokens and created a string-to-index (stoi -- `biased_data_stoi.pkl`) and index-to-string (itos -- `biased_data_itos.pkl`) file. These are pickle files, when you open them up you'll just see a bunch of strings on newlines. The index of the newline is the index of that string in the dataset. The raw strings have all been converted into their appropriate numericalized counterparts in the `biased_data_numericalized_dataset.pkl` file. For the neutral half of the corpus, the data is numericalized in `neutral_data_numericalized_dataset.pkl`, though notably both use the same itos/stoi files. If you need the raw data, you can get it [here](https://github.com/rpryzant/neutralizing-bias#data).
+If you need the raw data, you can get it [here](https://github.com/rpryzant/neutralizing-bias#data).
 #### Scifi:
-For the [SciFi dataset](https://www.aclweb.org/anthology/W19-3405/), the dataset I used is here: https://drive.google.com/file/d/1i4HOu6eilYBOUYVhkMbl6krj0a0d7sHz/view?usp=sharing . For the original, contact the original authors.
+For the [SciFi dataset](https://www.aclweb.org/anthology/W19-3405/), the dataset I used is here: https://drive.google.com/file/d/1i4HOu6eilYBOUYVhkMbl6krj0a0d7sHz/view?usp=sharing. Again, download and unzip this file into your `data_directory`. For the original, contact the original authors.
 ### Running things:
 
 Training scripts are located in `runfiles`. In there, run:
@@ -57,18 +57,26 @@ python train_skipgram.py -c 4 -n 15 -b 1000 -e 35 -w 0 -l 1e-2
 ```
 To train a Word2Vec model on the biased dataset with a **c**ontext window of 4, 15 **n**egative samples, a **b**atch size of 1000, 35 **e**pochs, 0 parallelized **w**orkers, and a **l**earning rate of 1e-2.
 
-Also this will try to load a previously saved model to continue training if the `model_init` file doesn't exist.
+Also this will try to load a previously saved model to continue training if the `model_last` file doesn't exist.
 
 Once you have a trained model, you'll want to identify the influential samples for different things. That is done in `helpers/influence_function.py`.
 
-You specify the test that you want to run in line 474, options are `career`, `math`, `science`, or `race`. In the paper, all results for `art` are gathered by running the `science` test and negating the results (changing terminology basically). 
-In line 476 you specify the model you want to test (which checkpoint or final model), then in 477 you choose the dataset (neutral_numericalized or biased_numericalized). The vocab file can stay the same for both (as they share a vocab).
+The test you want to run (out of `['race', 'math', 'science', 'career', 'scifi']`) is specified with the `-t` argument. The model to test must be specified with the `-m` parameter.
 
-To run the MSE test, run with `--test scifi`. This will swap out the model file, data file, vocab file, and write-out files automatically. To change the word you want to test, you'll need to manually edit the `word='dooku'` argument in line 492.
+For example, after training the above model, I can estimate influence on the `math` WEAT with the following command:
+```
+python influence_function.py -t math -b biased -m DENSE_biased_window-4_negatives-15_last_checkpoint.pth.tar
+```
 
-That writes out results to different text files, and you then need to order them, extract the indices, and chop the files down to manageable size. There is a script for this: `helpers/write_results_given_inf.py`. There is also a notebook for this, in which you must exchange the filename at the top of the notebook and just re-run all cells. The notebook is `extract_indices_from_influence_txt.pynb` in the `notebooks` directory. It's also a bit misleading in that `harmful` means things which _reduce_ bias, and helpful means things which _amplify_ bias. Mostly because it's harmful to the loss value (lowers it) or helpful to the loss value (grows it).
+To run the MSE test, run with `--test scifi`. You pass in a word to test with the `-w` or `--word` argument.
 
-With ordered sets in hand, you can undo their effects. This is done in `runfiles/undo_influence.py` There is an `undo_bias=True` parameter setting on line 165, and that's what you change (to be `False`) if you want to do the scifi undoing. Otherwise just leave it as is. The bias model which is being undone is in line 135, and this simultaneously does the undoing, redoing, and doing both. And sweeps over number-samples={5, 10, 100, 1000} and num_iterations={5, 10, 100, 1000}. Saving all models along the way.
+That writes out results to different text files, and you then need to order them, extract the indices, and chop the files down to manageable size. There is a script for this: `helpers/write_results_given_inf.py`. Naming convention: `harmful` means things which _reduce_ bias, and helpful means things which _amplify_ bias. Mostly because it's harmful to the loss value (lowers it) or helpful to the loss value (grows it).
+
+With ordered sets in hand, you can undo their effects. This is done in `runfiles/undo_influence.py` using the same command line arguments used for `influence_function.py`. For example:
+```
+python undo_influence.py -t math -b biased -m DENSE_biased_window-4_negatives-15_last_checkpoint.pth.tar
+```
+This simultaneously does the undoing, redoing, and doing both. And sweeps over number-samples={5, 10, 100, 1000} and num_iterations={5, 10, 100, 1000}. Saving all models along the way.
 
 Finally, you can evaluate finished models. with `helpers/weat.py`. This will run WEAT scores over a given model and for prior-work debiasing.
 

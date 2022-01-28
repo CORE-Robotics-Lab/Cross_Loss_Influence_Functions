@@ -49,7 +49,7 @@ def undo_skipgram_model(model_name,
     dataset_size = len(med_dataset)
     test_dataloader = DataLoader(dataset=med_dataset, batch_size=1, shuffle=False, num_workers=0)
     print("Data loader created")
-    most_recent_model = torch.load(os.path.join(MODEL_SAVE_DIR, PROJECT_NAME, 'checkpoints', model_name+'_checkpoint.pth.tar'),
+    most_recent_model = torch.load(os.path.join(MODEL_SAVE_DIR, PROJECT_NAME, 'checkpoints', model_name),
                                    map_location='cpu')
 
     model = SkipGramModel(vocab_size=len(most_recent_model['model_data']['u_embeddings.weight']),
@@ -89,7 +89,6 @@ def undo_skipgram_model(model_name,
             loss_val = model(words, contexts, negatives)
             loss_val.backward()
             optim_adam.step()
-    model_save_name = model_name.split()
     if prior_embeds is not None:
         model_name = 'bolukbasi_' + model_name
     torch.save({
@@ -113,22 +112,21 @@ def vectorized_non_tensor_loading(batch_data_in):
 def mp_undo_testtype(test='math biased'):
     model_base = test.split()[1]
     test = test.split()[0]
-    prior = 'bolukbasi'
-    use_gpu = True
+    prior = 'bolukbasi' if 'bolukbasi' in MODEL_NAME else ''
     for harm in ['harm', 'help', 'both']:
         for N in [5, 10, 100, 1000]:
             for K in [5, 10, 100, 1000]:
                 u_indices = []
                 dd_indices = []
                 if harm == 'harm' or harm == 'both':
-                    id_txt = os.path.join(DATA_DIR, f'{test}_{model_base}_influence_{prior}harmful_ids.txt')
+                    id_txt = os.path.join(DATA_DIR, f'{test}_{model_base}_{MODEL_NAME}_influence_{prior}harmful_ids.txt')
                     with open(id_txt, 'r') as f:
                         indices = f.readlines()
                     indices = indices[0].split()
                     indices = [int(eval(x)) for x in indices]
                     u_indices = indices[:N]
                 elif harm == 'help' or harm == 'both':
-                    id_txt = os.path.join(DATA_DIR, f'{test}_{model_base}_influence_{prior}helpful_ids.txt')
+                    id_txt = os.path.join(DATA_DIR, f'{test}_{model_base}_{MODEL_NAME}_influence_{prior}helpful_ids.txt')
                     with open(id_txt, 'r') as f:
                         indices = f.readlines()
                     indices = indices[0].split()
@@ -145,68 +143,62 @@ def mp_undo_testtype(test='math biased'):
                 tail = 'debiased'
                 if test == 'race':
                     tail += '-race'
-                prior_f = f'{prior}_original_DENSE_{model_base}_window-10_negatives-10_60_checkpoint.pth.tar_{tail}.txt'
-                prior_f = os.path.join(DATA_DIR, prior_f)
+                prior_f = None
+                if 'bolukbasi' in MODEL_NAME:
+                    prior_f = f'{prior}_original_{MODEL_NAME}_{tail}.txt'
+                    prior_f = os.path.join(DATA_DIR, prior_f)
                 undo_skipgram_model(
-                    model_name=f'DENSE_{model_base}_window-10_negatives-10_60',
+                    model_name=MODEL_NAME,
                     undo_indices=u_indices,
                     double_down_indices=dd_indices,
                     dataset_fn=f'{model_base}_data_numericalized_dataset.pkl',
                     window_size=10,
                     num_negatives=10,
                     num_repeats=K,
-                    cuda=use_gpu,
+                    cuda=USE_GPU,
                     test_name=test_name,
                     prior_embeds=prior_f)
 
 if __name__ == "__main__":
-    # So this failed...
-    # from multiprocessing.pool import ThreadPool
-    # pool = ThreadPool(processes=5)
-    # run_configs = []
-    # for context in [2, 3, 4, 5, 6, 7, 8, 9, 10]:
-    #     for negatives in [5, 10, 15, 20]:
-    #         run_configs.append({'window_size': context, 'number_negatives': negatives})
-    # pool.map(mp_train_skipgram_model, run_configs)
-    parser = argparse.ArgumentParser(description='Medical Knowledge Discovery (because mp failed)')
+    parser = argparse.ArgumentParser(description='')
     parser.add_argument('--disable-cuda', action='store_true', help='disable cuda (default: off/False)')
-
+    parser.add_argument("-b", "--base", help="biased or neutral", type=str, default='biased')
+    parser.add_argument("-t", "--test", help="test? ['career', 'science', 'math', 'race']", type=str, default='career')
+    parser.add_argument("-m", "--model_name", help="Model name to investigate", type=str, required=True)
+    parser.add_argument("-w", "--word", help="Word for the scifi tests", type=str)
     args = parser.parse_args()
-    use_gpu = not args.disable_cuda and torch.cuda.is_available()
-    undo_bias = True
-    if undo_bias:
-        tests = ['race biased', 'race neutral']  # , 'career biased', 'math neutral', 'science neutral', etc...
-        import torch.multiprocessing
-
-        torch.multiprocessing.set_sharing_strategy('file_system')
-        torch.multiprocessing.set_start_method('spawn')
-        from multiprocessing import Pool
-        pool = Pool()
-        pool.map(mp_undo_testtype, tests)
+    original = args.base
+    test_name = args.test
+    MODEL_NAME = args.model_name
+    word = args.word
+    USE_GPU = not args.disable_cuda and torch.cuda.is_available()
+    if test_name in ['science', 'math', 'career', 'race']:
+        tests = f'{test_name} {original}'
+        mp_undo_testtype(tests)
 
     else:
-        test='scifi'
+        assert len(word) > 0, "If not using 'career', 'race', 'science', or 'math', must provide scifi word"
         for harm in ['harm', 'help', 'both']:
                 for N in [1, 2, 5, 10]:
                     for K in [5, 10, 100, 1000]:
                         u_indices = []
                         dd_indices = []
                         if harm=='harm' or harm == 'both':
-                            id_txt = os.path.join(DATA_DIR, f'{test}_bias_influence_harmful_ids.txt')
+                            id_txt = os.path.join(DATA_DIR, f'{test_name}_bias_influence_harmful_ids.txt')
                             with open(id_txt, 'r') as f:
                                 indices = f.readlines()
                             indices = indices[0].split()
                             indices = [int(eval(x)) for x in indices]
                             u_indices = indices[:N]
                         elif harm == 'help' or harm == 'both':
-                            id_txt = os.path.join(DATA_DIR, f'{test}_bias_influence_helpful_ids.txt')
+                            id_txt = os.path.join(DATA_DIR, f'{test_name}_bias_influence_helpful_ids.txt')
                             with open(id_txt, 'r') as f:
                                 indices = f.readlines()
                             indices = indices[0].split()
                             indices = [int(eval(x)) for x in indices]
                             dd_indices = indices[:N]
 
-                        test_name = f'{test}-N-{N}-K-{K}-'
+                        test_name = f'{test_name}-N-{N}-K-{K}-'
                         if harm == 'harm':
                             test_name += 'harm-'
                         elif harm == 'help':
@@ -214,12 +206,12 @@ if __name__ == "__main__":
                         elif harm == 'both':
                             test_name += 'both'
                         undo_skipgram_model(
-                            model_name='DENSE_scifi_window-3_negatives-5_last',
+                            model_name=MODEL_NAME,
                             undo_indices=u_indices,
                             double_down_indices=dd_indices,
                             dataset_fn='all_scripts_numericalized_dataset.pkl',
                             window_size=3,
                             num_negatives=5,
                             num_repeats=K,
-                            cuda=use_gpu,
+                            cuda=USE_GPU,
                             test_name=test_name)

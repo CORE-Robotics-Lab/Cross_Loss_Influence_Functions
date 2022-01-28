@@ -1,6 +1,6 @@
 {
-    "data_directory": "/2tbd/clif_model_data/data",
-    "project_home": "/home/asilva/Documents/mcg_lab/cross-loss-influence/cross_loss_influence",
-    "model_save_directory": "/2tbd/clif_model_data/models",
+    "data_directory": "/2tbd/clif_test/",
+    "project_home": "/home/asilva/Documents/mcg_lab/Cross_Loss_Influence_Functions/cross_loss_influence",
+    "model_save_directory": "/2tbd/clif_test/models",
     "project_name": "cross_loss_inf"
 }

@@ -6,23 +6,15 @@ import numpy as np
 
 
 def write_indices_given_final_txts():
-    for test in ['race', 'career', 'science', 'math']:
-        for original in ['biased', 'neutral']:
-            file_prefix = f'{test}_{original}_influence_bolukbasi'
-            N = 10000
-            test_result_file = os.path.join(DATA_DIR, file_prefix + "test_results.txt")
-            with open(test_result_file, 'r') as f:
+    N = 10000
+    for txt_file in os.listdir(DATA_DIR):
+        if 'test_results' in txt_file:
+            file_prefix = txt_file.split('test_results')[0]
+            with open(os.path.join(DATA_DIR, txt_file), 'r') as f:
                 all_data = f.readlines()
             for line in all_data:
                 if line.split(':')[0] == 'Harmful':
                     harmfuls = line
-            # all_ints = []
-            # correct=True
-            # for index, chunk in enumerate(string_chunks):
-            #     if index % 3 == 0:
-            #         ints = chunk.split('[')[-1]
-            #         all_ints.append(ints)
-            # all_ints = [int(eval(x)) for x in all_ints]
             all_ints = [t.split(',')[0] for t in harmfuls.split('[')[2:]]
             with open(os.path.join(DATA_DIR, file_prefix+'helpful_ids.txt'), 'w') as f:
                 for index in all_ints[:N]:
@@ -40,8 +32,11 @@ def test_results_to_ordered_txts():
             with open(os.path.join(DATA_DIR, txt_file), 'r') as f:
                 data = f.readlines()
 
-            harmfuls = [t.split(',')[0] for t in data[4].split('[')[2:]]
-            helpfuls = [t.split(',')[0] for t in data[5].split('[')[2:]]
+            # harmfuls = [t.split(',')[0] for t in data[4].split('[')[2:]]
+            # helpfuls = [t.split(',')[0] for t in data[5].split('[')[2:]]
+            harmfuls = [t.split(',')[0] for t in data[2].split('[')[2:]]
+            helpfuls = [t.split(',')[0] for t in data[3].split('[')[2:]]
+
             if 'scifi' in txt_file:
                 dataset = InfluenceMedDataset(data_dir=DATA_DIR,
                                               filename='all_scripts_numericalized_dataset.pkl',
@@ -93,4 +88,4 @@ def test_results_to_ordered_txts():
 
 if __name__ == "__main__":
     test_results_to_ordered_txts()
-    # write_indices_given_final_txts()
+    write_indices_given_final_txts()
