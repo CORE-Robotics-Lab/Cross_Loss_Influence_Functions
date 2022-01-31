@@ -1,7 +1,7 @@
 from cross_loss_influence.helpers.bolukbasi_prior_work import we
 import json
 import numpy as np
-from cross_loss_influence.config import MODEL_SAVE_DIR
+from cross_loss_influence.config import MODEL_SAVE_DIR, DATA_DIR, PROJECT_NAME
 import sys
 import os
 from cross_loss_influence.helpers.sklearn_cluster_embeddings import get_embeddings
@@ -61,11 +61,16 @@ def extract_txt_embeddings(txt_fn):
 
 
 if __name__ == "__main__":
-
-    base = 'biased'
-    gender = False
-    for model_fn in os.listdir(MODEL_SAVE_DIR):
-        if not model_fn.endswith('.tar'):
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-b", "--base", help="biased or neutral", type=str, default='biased')
+    parser.add_argument("-g", "--gender", help="gender debiasing? omit for race debiasg", action="store_true")
+    args = parser.parse_args()
+    base = args.base
+    gender = args.gender
+    for model_fn in os.listdir(os.path.join(MODEL_SAVE_DIR, PROJECT_NAME, 'checkpoints')):
+        if not model_fn.endswith('.tar') or 'undone' in model_fn:
+            print(f"Skipping {model_fn}")
             continue
         if gender:
             def_fn = 'definitional_pairs.json'
@@ -93,15 +98,14 @@ if __name__ == "__main__":
 
         biased_cluster_data, all_keys = get_embeddings(
             model_fn=model_fn,
-            model_dir='/home/user/models/biased_models/',
-            vocab_fn='biased_data_stoi.pkl',
-            vocab_dir='/home/user/data/biased_data/')
+            # model_dir=MODEL_SAVE_DIR,  Just use the default
+            vocab_fn='biased_data_stoi.pkl')
         E = we.WordEmbedding(fname='given', given_data=[biased_cluster_data, all_keys])
 
         print("Debiasing...")
         debias(E, gender_specific_words, defs, equalize_pairs)
 
         print("Saving to file...")
-        E.save('/home/user/data/biased_data/'+deb_fn)
+        E.save(os.path.join(DATA_DIR, deb_fn))
 
         print("\n\nDone!\n")

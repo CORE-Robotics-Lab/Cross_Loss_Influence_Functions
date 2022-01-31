@@ -509,6 +509,7 @@ if __name__ == "__main__":
         prior_work_fn = None
         if 'bolukbasi' in model_name:
             prior_work_fn = model_name
+            model_name = model_name.split('original_')[-1].split('_debiased')[0]
 
         # prior_work_fn = os.path.join(DATA_DIR, f'bolukbasi_original_{model_name}_debiased.txt')
 

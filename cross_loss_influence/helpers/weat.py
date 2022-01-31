@@ -4,7 +4,8 @@ from cross_loss_influence.helpers.sklearn_cluster_embeddings import get_embeddin
 from cross_loss_influence.helpers.bolukbasi_prior_work.prior_pca_debiasing import extract_txt_embeddings
 import copy
 import os
-from cross_loss_influence.config import DATA_DIR
+from cross_loss_influence.config import DATA_DIR, MODEL_SAVE_DIR, PROJECT_NAME
+import argparse
 
 
 def test_statistic(targets_one, targets_two, attribute_one, attribute_two):
@@ -113,44 +114,17 @@ def weat(embeddings, keys, test='career', just_return=False):
     return test_stat, effect, p_val
 
 
-def biased_math_weat(biased_data_tuple=None):
-    """
-    Load in a hard-coded biased model, run the Word Embedding Association Test on gender/math
-    :return: test stat, effect size, p-value for math weat
-    """
-    if not biased_data_tuple:
-        biased_cluster_data, all_keys = get_embeddings(
-            model_fn=f'DENSE_biased_window-{10}_negatives-{10}_{60}_checkpoint.pth.tar',
-            vocab_fn='biased_data_stoi.pkl')
-    else:
-        biased_cluster_data = biased_data_tuple[0]
-        all_keys = biased_data_tuple[1]
-
-    return weat(biased_cluster_data, all_keys, 'math', True)
-
-def biased_science_weat(biased_data_tuple=None):
-    """
-    Load in a hard-coded biased model, run the Word Embedding Association Test on gender/math
-    :return: test stat, effect size, p-value for science weat
-    """
-    if not biased_data_tuple:
-        biased_cluster_data, all_keys = get_embeddings(
-            model_fn=f'DENSE_biased_window-{10}_negatives-{10}_{60}_checkpoint.pth.tar',
-            vocab_fn='biased_data_stoi.pkl')
-    else:
-        biased_cluster_data = biased_data_tuple[0]
-        all_keys = biased_data_tuple[1]
-
-    return weat(biased_cluster_data, all_keys, 'science', True)
-
-
 def sweep_weat_n_k(model_base, test_name, N=[5, 10, 100, 1000], K=[5, 10, 100, 1000]):
     for h in ['harm-', 'help-', 'both']:
         for n in N:
             for k in K:
                 model_name = model_base + '_' + test_name + f'-N-{n}-K-{k}-{h}-undone'
+                model_fn = f'{model_name}_checkpoint.pth.tar'
+                if not os.path.exists(os.path.join(MODEL_SAVE_DIR, PROJECT_NAME, 'checkpoints', model_fn)):
+                    print(f"{model_fn} does not exist -- Skipping...")
+                    continue
                 biased_cluster_data, all_keys = get_embeddings(
-                    model_fn=f'{model_name}_checkpoint.pth.tar',
+                    model_fn=model_fn,
                     vocab_fn='biased_data_stoi.pkl')
 
                 print(model_name)
@@ -197,7 +171,7 @@ def prior_work_weat(debiased_fn):
 
 def all_weats_one_model(model_fn):
     embeddings, all_keys = get_embeddings(model_fn=model_fn,
-                                          model_dir='/home/user/models/biased_models/',
+                                          model_dir=MODEL_SAVE_DIR,
                                           vocab_fn='biased_data_stoi.pkl')
     # all_weats_for_embeds_keys(embeddings, all_keys)
     if 'career' in model_fn:
@@ -230,18 +204,20 @@ def all_weats_for_embeds_keys(embeddings, all_keys):
 
 
 if __name__ == "__main__":
-    # Run WEATs over debiased models from us
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument("-m", "--model_name", help="Model name to investigate", type=str, required=True)
+    args = parser.parse_args()
+    MODEL_NAME = args.model_name
+
     for test in ['math', 'science', 'career', 'race']:
-        sweep_weat_n_k(model_base='DENSE_biased_window-10_negatives-10_60',
+        sweep_weat_n_k(model_base=MODEL_NAME,
                        test_name=test)
 
     # Run WEATs over debiased txt embeds from bolukbasi
     for debias_txt in os.listdir(DATA_DIR):
         if 'bolukbasi' in debias_txt and debias_txt.endswith('.txt') and 'debiased' in debias_txt:
-            print(debias_txt)
-            if 'career' in debias_txt or 'science' in debias_txt or 'math' in debias_txt:
-                continue
             prior_work_weat(os.path.join(DATA_DIR, debias_txt))
-            model_fn = debias_txt.split('_debiased')[0]
-            model_fn = model_fn.split('_original_')[-1]
-            all_weats_one_model(model_fn)
+        # else:
+        #     # model_fn = debias_txt.split('_debiased')[0]
+        #     # model_fn = model_fn.split('_original_')[-1]
+        #     all_weats_one_model(MODEL_NAME)

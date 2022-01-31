@@ -2,7 +2,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import argparse
 from cross_loss_influence.config import DATA_DIR
+
 
 def get_floats(string_in):
     floats_out = []
@@ -16,13 +18,13 @@ def get_floats(string_in):
     return floats_out
 
 
-def plot_tests(test_name='race'):
+def plot_tests(model_name, test_name='race'):
     """
     Input a test name below (and the appropriate model name) and this will generate 3*5*5 plots for you, showing
     how each model (for example, help-n-5-k-5) scores on the 4 WEAT tests. This is used to find the best performers"""
     N = [5, 10, 100, 1000]
     K = [5, 10, 100, 1000]
-    model_base = "txt/bias_neutral_corrections/DENSE_neutral_window-10_negatives-10_60_"
+    model_base = model_name
     modes = ['help-', 'harm-', 'both']
     for h in modes:
         for n in N:
@@ -31,7 +33,10 @@ def plot_tests(test_name='race'):
             science_effects = []
             race_effects = []
             for k in K:
-                model_name = model_base + test_name + f'-N-{n}-K-{k}-{h}-undone.txt'
+                model_name = model_base + '_' + test_name + f'-N-{n}-K-{k}-{h}-undone.txt'
+                if not os.path.exists(os.path.join(DATA_DIR, model_name)):
+                    print(f"{os.path.join(DATA_DIR, model_name)} does not exist -- Skipping...")
+                    continue
                 with open(os.path.join(DATA_DIR, model_name), 'r') as f:
                     results = f.readlines()
                 career_result = results[0]
@@ -55,17 +60,20 @@ def plot_tests(test_name='race'):
             plt.show()
 
 
-def get_best_result(test_name='career'):
+def get_best_result(model_name, test_name='career'):
     N = [5, 10, 100, 1000]
     K = [5, 10, 100, 1000]
-    model_base = "bolukbasi_weat_results/bolukbasi_DENSE_biased_window-10_negatives-10_60_"  # TODO: Swap in/out neutral/biased
+    model_base = model_name
     modes = ['help-', 'harm-', 'both']
     effects = []
     for h in modes:
         for n in N:
             for k in K:
                 result = 99999
-                model_name = model_base + test_name + f'-N-{n}-K-{k}-{h}-undone.txt'
+                model_name = model_base + '_' + test_name + f'-N-{n}-K-{k}-{h}-undone.txt'
+                if not os.path.exists(os.path.join(DATA_DIR, model_name)):
+                    print(f"{os.path.join(DATA_DIR, model_name)} does not exist -- Skipping...")
+                    continue
                 with open(os.path.join(DATA_DIR, model_name), 'r') as f:
                     results = f.readlines()
                 if test_name == 'career':
@@ -90,6 +98,11 @@ def get_best_result(test_name='career'):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument("-m", "--model_name", help="Model name to investigate", type=str, required=True)
+    args = parser.parse_args()
+    MODEL_NAME = args.model_name
     for test in ['science', 'math', 'career', 'race']:
-        lowest_val, p_val, model_name = get_best_result(test)
+        lowest_val, p_val, model_name = get_best_result(MODEL_NAME, test)
         print(f"{model_name} scored as low as {lowest_val} at p={p_val}")
+        plot_tests(MODEL_NAME, test)

@@ -78,7 +78,15 @@ python undo_influence.py -t math -b biased -m DENSE_biased_window-4_negatives-15
 ```
 This simultaneously does the undoing, redoing, and doing both. And sweeps over number-samples={5, 10, 100, 1000} and num_iterations={5, 10, 100, 1000}. Saving all models along the way.
 
-Finally, you can evaluate finished models. with `helpers/weat.py`. This will run WEAT scores over a given model and for prior-work debiasing.
+Finally, you can evaluate finished models. with `helpers/weat.py`. This will run WEAT scores over a given model and for prior-work debiasing (if present in the DATA_DIR):
+```
+python weat.py -m DENSE_biased_window-4_negatives-15_last_checkpoint.pth.tar
+```
+
+To print out results and/or show plots of biases, you can run the `plot_bias_movement.py` script after running `weat.py`:
+```
+python plot_bias_movement.py -m DENSE_biased_window-4_negatives-15_last_checkpoint.pth.tar
+```
 
 Basically:
 1. Train your model (`train_skipgram.py`). Saves model to model_save_dir
@@ -89,6 +97,15 @@ Basically:
 1. Print out comparisons across tests (`plot_bias_movement.py`). Uses data_dir results.
 
 ### Prior Work
-Within `helpers/` there is a directory called `bolukbasi_prior_work` that has files cloned from the bolukbasi prior work directory, which I use to debias my word embeddings. That is done in the `prior_pca_debiasing.py` file, which saves the debiased embeddings to the data directory specified in the config.json. These can then be loaded into a saved model with a function in the `influence_fuction.py` script. 
+Within `helpers/` there is a directory called `bolukbasi_prior_work` that has files cloned from the bolukbasi prior work directory, which I use to debias my word embeddings. That is done in the `prior_pca_debiasing.py` file, which saves the debiased embeddings to the data directory specified in the config.json. These can then be loaded into a saved model with a function in the `influence_fuction.py` script.
+To compute run prior work, compute influence, remove influence, compute WEAT, and visualize scores, run:
+```
+python prior_pca_debiasing.py -b biased -g
+``` 
+This runs on biased data (`-b`) and does gender debiasing (`-g`). For race debiasing, omit the `-g` flag. This will automatically run prior work debiasing over all models in the `MODEL_SAVE_DIR/cross_loss_inf/checkpoints` directory.
+```
+python influence_function.py -b biased -t math -m /path/to/bolukbasi_original_DENSE_biased_window-4_negatives-15_last_checkpoint.pth.tar_debiased-gender.txt
+``` 
+Again with biased data (`-b`), for the math WEAT (`-t math`), and using prior work embeddings by pointing to the new `.txt.` file that was written by `prior_pca_debiasing.py`.
 
 
