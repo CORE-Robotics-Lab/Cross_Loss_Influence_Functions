@@ -112,4 +112,11 @@ Then you can undo influence again using `undo_influence.py`, with the `--prior` 
 ```
 python undo_influence.py -t math -b biased -m DENSE_biased_window-4_negatives-15_last_checkpoint.pth.tar --prior
 ```
-
+And you can then run WEATS back in the `helpers/` directory:
+```
+python weat.py -m bolukbasi_DENSE_biased_window-4_negatives-15_last_checkpoint.pth.tar
+```
+Or plot biases against each other:
+```
+python plot_bias_movement.py -m bolukbasi_DENSE_biased_window-4_negatives-15_last_checkpoint.pth.tar
+```

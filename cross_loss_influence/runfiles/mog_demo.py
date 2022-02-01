@@ -18,7 +18,7 @@ np.set_printoptions(precision=6, suppress=True)
 
 def load_models(ds_obj, device='cuda'):
     base_model = DEC(input_dim=2, hidden_dimension=12, cluster_number=ds_obj['num_clusters']).to(device)
-    base_model = init_model(base_model, ds_obj['dataset'], device=device, save=False)  # Only save once
+    base_model = init_model(base_model, ds_obj['dataset'], device=device, save=False, save_dir=DATA_PATH)  # Only save once
     non_nll_model = DEC(input_dim=2, hidden_dimension=12, cluster_number=ds_obj['num_clusters']).to(device)
     nll_model = DEC(input_dim=2, hidden_dimension=12, cluster_number=ds_obj['num_clusters']).to(device)
     model_non_chkpt = torch.load(os.path.join(DATA_PATH, 'non_nll.pt'), map_location='cpu')
@@ -30,7 +30,7 @@ def load_models(ds_obj, device='cuda'):
 
 def train_two_models(ds_obj, device='cuda'):
     base_model = DEC(input_dim=2, hidden_dimension=12, cluster_number=N_CLUSTERS).to(device)
-    base_model = init_model(base_model, ds_obj['dataset'], device=device, save=True)  # Only save once
+    base_model = init_model(base_model, ds_obj['dataset'], device=device, save=True, save_dir=DATA_PATH)  # Only save once
 
     torch.random.manual_seed(0)
     non_nll = copy.deepcopy(base_model)
@@ -109,7 +109,7 @@ def retrain_influence(initial_model, finished_model, ds_obj, nll=False, device='
             new_dataset = torch.cat((dataset[0][:other_index], dataset[0][other_index+1:]))
             new_labelset = torch.cat((dataset[1][:other_index], dataset[1][other_index+1:]))
             training_dataset = (new_dataset, new_labelset)
-            initial_model = init_model(initial_model, dataset, device=device, save=False)
+            initial_model = init_model(initial_model, dataset, device=device, save=False, save_dir=DATA_PATH)
             other_path = os.path.join(DATA_PATH, f'mog_model_final_without_{other_index}.pth.tar')
             train(
                     data_in=training_dataset,
@@ -195,17 +195,18 @@ def correlate_influences(initial_model, finished_model, ds_obj, device='cuda'):
             else:
                 plt.plot(emp_infs, matched_inf_fn, 'ro')
                 plt.plot(emp_infs, cross_loss_inf_fn, 'bo')
+            prop = {'weight': 'normal'}
+
+            if r_squared[0] >= 0.9 or matched_r_squared[0] >= 0.9:
+                prop['weight'] = 'bold'
             plt.plot(emp_infs, matched_best_fit, c='purple',
-                     label=f'Matched Pearson\'s R: {matched_r_squared[0]} \n p = {matched_r_squared[1]}')
+                     label=f'Matched Pearson\'s R: {matched_r_squared[0]:.4f} \n p = {matched_r_squared[1]:.8f}')
             plt.plot(emp_infs, best_fit, c='goldenrod',
-                     label=f'Cross-Loss Pearson\'s R: {r_squared[0]} \n p = {r_squared[1]}')
+                     label=f'Cross-Loss Pearson\'s R: {r_squared[0]:.4f} \n p = {r_squared[1]:.8f}')
             plt.xlabel('empirical influence')
             plt.ylabel('predicted influence')
-            prop = {}
-            if r_squared[0] >= 0.9:
-                prop['weight'] = 'bold'
 
-            plt.legend(loc='lower left', prop=prop)
+            plt.legend(loc="upper left", prop=prop)  #  bbox_to_anchor=(0.5, -0.5), prop=prop)
 
             plt.savefig(os.path.join(DATA_PATH, 'mog_data', 'correlations', f'mog_fit_{index}.png'))
             plt.close()

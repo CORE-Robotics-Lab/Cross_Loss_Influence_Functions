@@ -107,13 +107,16 @@ class DEC(nn.Module):
 def init_model(model_in: torch.nn.Module,
                dataset_in: Tuple[torch.Tensor, torch.Tensor] = None,
                device: str = 'cpu',
-               save: bool = True):
+               save: bool = True,
+               save_dir=None):
     import os
     from cross_loss_influence.config import MODEL_SAVE_DIR
-    model_fn = os.path.join(MODEL_SAVE_DIR, 'mog_model_init.pth.tar')
+    if save_dir is not None:
+        model_save_path = save_dir
+    else:
+        model_save_path = MODEL_SAVE_DIR
+    model_fn = os.path.join(model_save_path, 'mog_model_init.pth.tar')
     if save:
-        import os
-        from cross_loss_influence.config import MODEL_SAVE_DIR
         ds = MOGDataset(dataset_in)
         num_clusters = len(np.unique(dataset_in[1]))
 
