@@ -108,4 +108,8 @@ python influence_function.py -b biased -t math -m /path/to/bolukbasi_original_DE
 ``` 
 Again with biased data (`-b`), for the math WEAT (`-t math`), and using prior work embeddings by pointing to the new `.txt.` file that was written by `prior_pca_debiasing.py`.
 
+Then you can undo influence again using `undo_influence.py`, with the `--prior` flag and with the `-m` pointing to whichever model you would like to neutralize:
+```
+python undo_influence.py -t math -b biased -m DENSE_biased_window-4_negatives-15_last_checkpoint.pth.tar --prior
+```
 

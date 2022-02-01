@@ -109,10 +109,10 @@ def vectorized_non_tensor_loading(batch_data_in):
     return all_words, all_contexts, all_negatives
 
 
-def mp_undo_testtype(test='math biased'):
+def mp_undo_testtype(test='math biased', bolukbasi=False):
     model_base = test.split()[1]
     test = test.split()[0]
-    prior = 'bolukbasi' if 'bolukbasi' in MODEL_NAME else ''
+    prior = 'bolukbasi' if False else ''
     for harm in ['harm', 'help', 'both']:
         for N in [5, 10, 100, 1000]:
             for K in [5, 10, 100, 1000]:
@@ -143,9 +143,11 @@ def mp_undo_testtype(test='math biased'):
                 tail = 'debiased'
                 if test == 'race':
                     tail += '-race'
+                else:
+                    tail += '-gender'
                 prior_f = None
-                if 'bolukbasi' in MODEL_NAME:
-                    prior_f = f'{prior}_original_{MODEL_NAME}_{tail}.txt'
+                if bolukbasi:
+                    prior_f = f'bolukbasi_original_{MODEL_NAME}_{tail}.txt'
                     prior_f = os.path.join(DATA_DIR, prior_f)
                 undo_skipgram_model(
                     model_name=MODEL_NAME,
@@ -165,16 +167,18 @@ if __name__ == "__main__":
     parser.add_argument("-b", "--base", help="biased or neutral", type=str, default='biased')
     parser.add_argument("-t", "--test", help="test? ['career', 'science', 'math', 'race']", type=str, default='career')
     parser.add_argument("-m", "--model_name", help="Model name to investigate", type=str, required=True)
+    parser.add_argument("--prior", help="Use prior work embeddings?", action="store_true")
     parser.add_argument("-w", "--word", help="Word for the scifi tests", type=str)
     args = parser.parse_args()
     original = args.base
     test_name = args.test
     MODEL_NAME = args.model_name
+    prior_work = args.prior
     word = args.word
     USE_GPU = not args.disable_cuda and torch.cuda.is_available()
     if test_name in ['science', 'math', 'career', 'race']:
         tests = f'{test_name} {original}'
-        mp_undo_testtype(tests)
+        mp_undo_testtype(tests, bolukbasi=prior_work)
 
     else:
         assert len(word) > 0, "If not using 'career', 'race', 'science', or 'math', must provide scifi word"

@@ -522,6 +522,9 @@ if __name__ == "__main__":
                                                                recursion_depth=r_depth,
                                                                r=rec,
                                                                other_embeds=prior_work_fn)
-
+        file_prefix = ''
+        if 'bolukbasi' in model_name:
+            file_prefix += 'bolukbasi_'
+        file_prefix += f'{test_name}_{original}_{model_name}_influence_'
         write_out_results(i_out, harm_out, help_out, dset, keyset,
-                          file_prefix=f'{test_name}_{original}_{model_name}_influence_')
+                          file_prefix=file_prefix)
