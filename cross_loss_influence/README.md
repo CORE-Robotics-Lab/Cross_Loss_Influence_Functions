@@ -15,12 +15,10 @@ This file is explicitly ignored in the `.gitignore`.
 
 Requirements are listed within `requirements.txt`. For only the MoG experiments, you will likely only need the usual scientific computing packages (numpy, scipy, pytorch, etc). For the WEAT/Sci-Fi experiments, you may need mat2vec which you can get [here](https://github.com/materialsintelligence/mat2vec). Follow the entire installation guide before coming back here and running the remainder of your pip install.
 
-For the pip install, move the `setup.py` to this project's parent directory, navigate to the parent directory of this and run:
+For the pip install, navigate to the parent directory of this (`Cross_Loss_Influence_Functions/`) and run:
 ```
 pip install -e .
 ```
-You _also_ need to modify `config.py` in the main directory (here) to reflect your machine. So mine says `/home/myname/Documents/Cross_Loss_Influence_Functions/cross_loss_influence/config.json`, yours should point to your machine.
-
 Finally, the Cython needs to be built. Navigate to `cross_loss_influence/data/scripts` and run:
 ```
 python setup.py build_ext --inplace
