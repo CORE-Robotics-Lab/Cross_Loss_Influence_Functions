@@ -13,7 +13,7 @@ This a pip install of itself, as well as datasets and external libraries. You pr
 ```
 This file is explicitly ignored in the `.gitignore`.
 
-Requirements are listed within `requirements.txt`. For only the MoG experiments, you will likely only need the usual scientific computing packages (numpy, scipy, pytorch, etc). For the WEAT/Sci-Fi experiments, you may need mat2vec which you can get [here](https://github.com/materialsintelligence/mat2vec). Follow the entire installation guide before coming back here and running the remainder of your pip install.
+Requirements are listed within `requirements.txt`. For only the MoG experiments, you will likely only need the usual scientific computing packages (numpy, scipy, pytorch, scikit-learn, etc.). For the WEAT/Sci-Fi experiments, you may need mat2vec which you can get [here](https://github.com/materialsintelligence/mat2vec). Follow the entire installation guide before coming back here and running the remainder of your pip install.
 
 For the pip install, navigate to the parent directory of this (`Cross_Loss_Influence_Functions/`) and run:
 ```
