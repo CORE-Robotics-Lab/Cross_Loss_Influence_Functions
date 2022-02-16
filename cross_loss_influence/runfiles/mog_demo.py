@@ -233,8 +233,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--data_path", help="where to store everything?", type=str, default='../CLIF_MOG_DATA/')
     parser.add_argument("-r", "--re_use", action="store_true", help="re-use an already-generated MoG result?")
+    parser.add_argument("--cpu", help="Use CPU instead of CUDA?", action="store_true")
     args = parser.parse_args()
-    dv = 'cuda'
+    dv = 'cuda' if torch.cuda.is_available() and not args.cpu else 'cpu'
 
     if os.path.exists(args.data_path):
         print('using existing path')
