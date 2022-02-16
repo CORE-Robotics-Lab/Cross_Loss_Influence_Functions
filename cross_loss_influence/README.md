@@ -34,9 +34,10 @@ There is a single demo script to automate all of the below. Simply run:
 cd runfiles
 python mog_demo.py
 ```
-There are 2 command line args for this:
+There are 3 command line args for this:
 * `-p` or `--data_path`: Where would you like results/data to be stored?
 * '-r' or `--re_use`: Should we re-use an already-generated MoG result? (only add this if you've already run the script at least once)
+* `--cpu`: Should we run on the CPU instead of cuda? If this is not included, the script will run on cuda and you therefore must have cuda installed!
 
 To manually step through the entire script, follow the steps in `MOG_README.md`.
 
